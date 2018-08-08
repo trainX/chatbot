@@ -1,7 +1,10 @@
 from pyspark.sql import SQLContext
+from pyspark.sql.types import StructField,StructType,StringType,FloatType
 from pyspark import SparkContext
 from pyspark.ml.feature import RegexTokenizer, StopWordsRemover,CountVectorizer
 from pyspark.ml.classification import LogisticRegression
+from pyspark.ml import Pipeline
+from pyspark.ml.feature import OneHotEncoder, StringIndexer, VectorAssembler
 
 sc = SparkContext()
 sqlContext = SQLContext(sc)
@@ -11,6 +14,9 @@ regexTokenizer = None
 stopwordsRemover = None
 countVectors = None
 dataset = None
+lrModel = None
+pipeline = None
+pipelineFit = None
 
 def init():
 
@@ -28,6 +34,7 @@ def init():
     data = data.select([column for column in data.columns if column not in drop_list])
 
     data.show(5)
+    data.printSchema()
 
     # regular expression tokenizer
     regexTokenizer = RegexTokenizer(inputCol="question",outputCol="words", pattern="\\W")
@@ -51,16 +58,13 @@ def init():
     countVectors = CountVectorizer(inputCol="filtered",outputCol="features", vocabSize=15, minDF=1)
 
 
-def featureExtraction():
+def trainFeatureExtraction():
 
-    from pyspark.ml import Pipeline
-    from pyspark.ml.feature import OneHotEncoder, StringIndexer, VectorAssembler
-
-    global dataset
+    global dataset, pipeline, pipelineFit
 
     # Encode a string column of labels ordered by label frequencies
 
-    label_stringIdx = StringIndexer(inputCol = "category", outputCol="label")
+    label_stringIdx = StringIndexer(inputCol = "category", outputCol="label").setHandleInvalid("keep") 
 
     pipeline = Pipeline(stages=[regexTokenizer,stopwordsRemover,countVectors, label_stringIdx])
 
@@ -68,6 +72,23 @@ def featureExtraction():
     pipelineFit = pipeline.fit(data)
     dataset = pipelineFit.transform(data)
     dataset.show(10)
+
+def scoringFeatureExtraction(input):
+
+    
+    data = [(input,'','')]
+    #Make Dataframe from data
+    df  = sqlContext.createDataFrame(data,['question','category','answer'])
+    #df.collect()
+    #df.show()
+    #df.printSchema()
+
+    #df = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferschema='true').load('score.csv')
+
+    # Predict on the sample data
+    dataset = pipelineFit.transform(df)
+
+    return dataset
 
 
 def train(interations):
@@ -84,38 +105,43 @@ def train(interations):
     lrModel = lr.fit(trainingData)
 
 # Predict using the testData if traintest is False.  Otherwise, predict based on the data parameter, which should be a dataframe
-def predict(traintest=False,data=None):
+def predict(traintest=False,data=None,question=None):
 
     if traintest == True:
         inputData = testData
-    else:
+    elif data != None:
+        print("Prediction using datafrome:\n")
         inputData = data
-
-    predictions = lrModel.transform(inputData)
-
-    predictions.filter(predictions['prediction'] >= 0) \
-            .select("question","answer","probability","label","prediction") \
-            .orderBy("probability",ascending=False) \
-            .show(n=10,truncate=30)
-
+        predictions = lrModel.transform(inputData)
+        predictions.show()
+    else:
+        print("Prediction using a string:\n")
+        inputData = scoringFeatureExtraction(question)
+        inputData.show()
+        prediction = lrModel.transform(inputData)
+        return prediction.head().prediction
 
 def driver():
     while True:
         try:
 
-            question = input(":=> ")
+            myQuestion = input(":=> ")
+            answer=predict(question=myQuestion)
+            print(":=> {}".format(answer))
         except ValueError:
             print(":=> Sorry, I didn't understand that.")
             continue
-        else:
-            break
 
 if __name__ == "__main__":
     print("Afrotech Chatbot\n")
     init()
-    featureExtraction()
+    trainFeatureExtraction()
+    train(100)
     clientData = dataset.sample(False,0.30)
-    for x in range(100,1000,20):
-        train(x)
-        predict(data=clientData)
-    #driver()
+    #predict(data=clientData)
+    #myQuestion = "what is afrotech"
+    #predict(question=myQuestion)
+    #for x in range(100,1000,20):
+    #    train(x)
+    #    predict(data=clientData)
+    driver()
