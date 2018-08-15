@@ -3,7 +3,16 @@ question,category,answer
 "what is afrotech",what,AfroTech Detroit is a one day AfroTech experience dedicated to highlighting Detroit as a technological hub for innovation and entrepreneurship.
 "when is afrotech detroit",when,"Saturday, August 18, 2018 from 9:00 AM – 6:00 PM"
 "when is afrotech",when,"Saturday, August 18, 2018 from 9:00 AM – 6:00 PM"
-"where can I buy tickets",purchase tickets,Tickets are $50 per person.  You can purchase ticket by clicking this link: https://bit.ly/2v9YzW1
+"where can I buy tickets",purchase tickets,Tickets are $50 per person.  You can purchase tickets by clicking this link: https://bit.ly/2v9YzW1
 "whats the agenda",agenda,The official speaker list is located at https://bit.ly/2v9YzW1
 "where is afrotech",where,Cobo Center - Grand Riverview Ballroom 1 Washington Blvd Detroit, MI 48226
+"where is afrotech detroit",where,Cobo Center - Grand Riverview Ballroom 1 Washington Blvd Detroit, MI 48226
 why should I attend afrotech,why,It's a great opportunity to learn what's happening on the Detroit tech scence and give you the opportunity to see if you want to join the tech revolution in Detroit.
+"hello",hello, "Hi! Can I answer questions about Afrotech?"
+"where is detroit",detroit,"Detroit is located in Michigan."
+"who's on the agenda",agenda, The official speaker list is located at https://bit.ly/2v9YzW1
+"how much does it cost to attend",cost,Tickets are $50 per person.  You can purchase tickets by clicking this link: https://bit.ly/2v9YzW1
+"hello",greeting,"Hi! I am the Afrotech chatbot.  How can I help?"
+"hi",greeting,"Hi! I am the Afrotech chatbot.  How can I help?"
+"thanks",thankyou,"You are welcome!"
+"bye",bye,"Catch you later!"

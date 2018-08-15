@@ -5,6 +5,10 @@ from pyspark.ml.feature import RegexTokenizer, StopWordsRemover,CountVectorizer
 from pyspark.ml.classification import LogisticRegression
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import OneHotEncoder, StringIndexer, VectorAssembler
+import logging
+import json
+from flask import Flask, request
+import argparse
 
 sc = SparkContext()
 sqlContext = SQLContext(sc)
@@ -17,6 +21,12 @@ dataset = None
 lrModel = None
 pipeline = None
 pipelineFit = None
+
+#logging.basicConfig(filename='chatbot.log',level=logging.DEBUG)
+
+app = Flask(__name__)
+
+
 
 def init():
 
@@ -58,6 +68,12 @@ def init():
     countVectors = CountVectorizer(inputCol="filtered",outputCol="features", vocabSize=15, minDF=1)
 
 
+def answerLookup(label):
+
+    answer = dataset.filter(dataset['label'] == label).drop_duplicates().head().answer
+
+    return answer
+
 def trainFeatureExtraction():
 
     global dataset, pipeline, pipelineFit
@@ -72,6 +88,8 @@ def trainFeatureExtraction():
     pipelineFit = pipeline.fit(data)
     dataset = pipelineFit.transform(data)
     dataset.show(10)
+    
+   
 
 def scoringFeatureExtraction(input):
 
@@ -107,6 +125,8 @@ def train(interations):
 # Predict using the testData if traintest is False.  Otherwise, predict based on the data parameter, which should be a dataframe
 def predict(traintest=False,data=None,question=None):
 
+    #log = logging.getLogger("my_logger")
+
     if traintest == True:
         inputData = testData
     elif data != None:
@@ -115,9 +135,9 @@ def predict(traintest=False,data=None,question=None):
         predictions = lrModel.transform(inputData)
         predictions.show()
     else:
-        print("Prediction using a string:\n")
+        #log.debug("Prediction using a string:\n")
         inputData = scoringFeatureExtraction(question)
-        inputData.show()
+        #log.debug(inputData.show())
         prediction = lrModel.transform(inputData)
         return prediction.head().prediction
 
@@ -126,22 +146,38 @@ def driver():
         try:
 
             myQuestion = input(":=> ")
-            answer=predict(question=myQuestion)
-            print(":=> {}".format(answer))
+            label=predict(question=myQuestion)
+            print(":=> {}".format(answerLookup(label)))
         except ValueError:
             print(":=> Sorry, I didn't understand that.")
             continue
 
+@app.route('/predict')
+def index():
+    q = request.args.get("q")
+    answer = answerLookup(predict(question=q))
+    return "{}".format(answer)
+
 if __name__ == "__main__":
-    print("Afrotech Chatbot\n")
+    
+    # Train the model
     init()
     trainFeatureExtraction()
     train(100)
-    clientData = dataset.sample(False,0.30)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mode",help="run the chatbot in driver or http mode")
+    args = parser.parse_args()
+    if args.mode == "driver":
+        driver()
+    elif args.mode == "http":
+        app.run(host='0.0.0.0', port=9999, debug=True,threaded=True)
+
+    #clientData = dataset.sample(False,0.30)
     #predict(data=clientData)
     #myQuestion = "what is afrotech"
     #predict(question=myQuestion)
     #for x in range(100,1000,20):
     #    train(x)
     #    predict(data=clientData)
-    driver()
+    #driver()
